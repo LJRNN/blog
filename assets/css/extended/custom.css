@@ -1,0 +1,245 @@
+/* ============================================
+   nannan 的小可爱风格包 for PaperMod
+   软圆角 + 奶油色 + 小装饰
+   ============================================ */
+
+/* 全局变量：奶油粉+天空蓝双主题 */
+:root {
+  --nn-pink: #ffb7c5;
+  --nn-pink-deep: #ff8fab;
+  --nn-blue: #a8d8ea;
+  --nn-blue-deep: #7ec8e3;
+  --nn-cream: #fff7f2;
+  --nn-text: #5c4a4a;
+  --nn-radius: 18px;
+  --nn-shadow: 0 4px 18px rgba(255, 143, 171, 0.18);
+}
+
+/* 暗色模式：换成夜空紫+莓果色 */
+[data-theme="dark"] {
+  --nn-pink: #b98aa8;
+  --nn-pink-deep: #d4a0b9;
+  --nn-blue: #6b8cae;
+  --nn-blue-deep: #8fb3d9;
+  --nn-cream: #2a2430;
+  --nn-text: #e8dce4;
+  --nn-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* ---- 整体 ---- */
+body {
+  font-family: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+  color: var(--nn-text);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255, 183, 197, 0.12), transparent 42%),
+    radial-gradient(circle at 88% 92%, rgba(168, 216, 234, 0.12), transparent 42%),
+    var(--nn-cream);
+  line-height: 1.9;
+}
+
+/* ---- 顶部导航 ---- */
+#menu {
+  background: transparent;
+}
+#menu a {
+  border-radius: 999px;
+  padding: 6px 14px;
+  transition: all 0.25s ease;
+}
+#menu a:hover {
+  background: var(--nn-pink);
+  color: #fff !important;
+  transform: translateY(-2px);
+}
+
+/* ---- 标题：圆润可爱 ---- */
+.post-title,
+.entry-title,
+h1, h2, h3 {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.post-title a:hover {
+  color: var(--nn-pink-deep);
+}
+
+h2 {
+  border-bottom: none;
+  position: relative;
+  padding-left: 18px;
+}
+h2::before {
+  content: "🌸";
+  position: absolute;
+  left: -6px;
+  top: -2px;
+  font-size: 0.85em;
+}
+
+h3 {
+  padding-left: 14px;
+  position: relative;
+}
+h3::before {
+  content: "✦";
+  position: absolute;
+  left: 0;
+  color: var(--nn-pink-deep);
+  font-size: 0.8em;
+}
+
+/* ---- 文章卡片：奶乎乎 ---- */
+.post-entry,
+.article-card,
+.post-card {
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: var(--nn-radius);
+  box-shadow: var(--nn-shadow);
+  border: 1px solid rgba(255, 183, 197, 0.25);
+  padding: 1.4rem 1.6rem;
+  margin: 1.2rem 0;
+  transition: all 0.3s ease;
+}
+[data-theme="dark"] .post-entry,
+[data-theme="dark"] .article-card,
+[data-theme="dark"] .post-card {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.post-entry:hover {
+  transform: translateY(-4px) rotate(-0.3deg);
+  box-shadow: 0 10px 28px rgba(255, 143, 171, 0.28);
+  border-color: var(--nn-pink);
+}
+
+/* ---- 首页寄语 ---- */
+.home-info .entry-content {
+  background: linear-gradient(135deg, rgba(255, 183, 197, 0.18), rgba(168, 216, 234, 0.18));
+  border-radius: var(--nn-radius);
+  padding: 1.4rem 1.8rem;
+  border: 1px dashed var(--nn-pink);
+}
+
+/* ---- 标签 & 分类：糖果胶囊 ---- */
+.post-tag,
+.tags-links a,
+.post-meta a {
+  border-radius: 999px !important;
+  padding: 2px 12px !important;
+  background: rgba(168, 216, 234, 0.25);
+  transition: all 0.2s ease;
+}
+.post-tag:hover,
+.tags-links a:hover {
+  background: var(--nn-pink);
+  color: #fff !important;
+}
+
+/* ---- 代码块：草莓奶昔 ---- */
+pre,
+code {
+  border-radius: 12px !important;
+  font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+}
+pre {
+  border: 1px solid rgba(255, 183, 197, 0.35);
+  box-shadow: 0 3px 12px rgba(255, 143, 171, 0.12);
+}
+pre code {
+  background: transparent;
+}
+:not(pre) > code {
+  background: rgba(255, 183, 197, 0.22);
+  color: var(--nn-pink-deep);
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+[data-theme="dark"] :not(pre) > code {
+  color: var(--nn-pink);
+}
+
+/* ---- 引用块：软软的便签 ---- */
+blockquote {
+  border-left: 4px solid var(--nn-pink);
+  background: rgba(255, 183, 197, 0.12);
+  border-radius: 0 14px 14px 0;
+  padding: 0.8rem 1.2rem;
+  margin: 1.2rem 0;
+  font-style: normal;
+}
+
+/* ---- 表格 ---- */
+table {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--nn-shadow);
+}
+th {
+  background: var(--nn-pink);
+  color: #fff;
+}
+
+/* ---- 按钮 & 链接 ---- */
+button,
+.btn,
+a.btn {
+  border-radius: 999px !important;
+}
+a {
+  text-decoration-color: var(--nn-pink);
+  text-underline-offset: 3px;
+}
+a:hover {
+  color: var(--nn-pink-deep);
+}
+
+/* ---- 回到顶部按钮 ---- */
+#top-link {
+  border-radius: 50%;
+  background: var(--nn-pink);
+  color: #fff;
+  box-shadow: var(--nn-shadow);
+}
+
+/* ---- 滚动条：粉粉的 ---- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--nn-pink), var(--nn-blue));
+  border-radius: 999px;
+  border: 2px solid var(--nn-cream);
+}
+
+/* ---- 选中文字 ---- */
+::selection {
+  background: var(--nn-pink);
+  color: #fff;
+}
+
+/* ---- 页脚 ---- */
+footer {
+  opacity: 0.85;
+  font-size: 0.9em;
+}
+footer::before {
+  content: "ʕ•ᴥ•ʔ ";
+  letter-spacing: 2px;
+}
+
+/* ---- 阅读进度条（PaperMod 顶部） ---- */
+#top-progress {
+  background: linear-gradient(90deg, var(--nn-pink), var(--nn-blue));
+  height: 3px;
+}
+
+/* ---- 打印时收起装饰 ---- */
+@media print {
+  h2::before, h3::before, footer::before {
+    content: none;
+  }
+}
