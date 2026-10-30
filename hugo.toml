@@ -58,13 +58,15 @@ summaryLength = 80
     Title = "写点做过的、踩过的、想明白的"
     Content = """
 多数是自己写着用的小工具，偶尔也写踩坑复盘。
-
 不定期更新，写完就发。
-"""
 
+> 🌸 欢迎来到 LJRNN 的小角落，坐坐再走呀。
+"""
   [params.assets]
     disableHLJS = true
     favicon = "/favicon.ico"
+    # 自定义样式：小可爱风格
+    customCSS = ["css/extended/custom.css"]
 
   [params.editPost]
     URL = "https://github.com/LJRNN/blog/edit/main/content/"
@@ -96,3 +98,4 @@ summaryLength = 80
   name = "关于"
   pageRef = "/about"
   weight = 50
+
