@@ -65,27 +65,26 @@ h1, h2, h3 {
 
 h2 {
   border-bottom: none;
-  position: relative;
-  padding-left: 18px;
+  margin-top: 2.2em;
 }
+
 h2::before {
-  content: "🌸";
-  position: absolute;
-  left: -6px;
-  top: -2px;
-  font-size: 0.85em;
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--nn-pink);
+  margin-right: 10px;
+  vertical-align: middle;
 }
 
 h3 {
-  padding-left: 14px;
-  position: relative;
+  padding-left: 0;
 }
 h3::before {
-  content: "✦";
-  position: absolute;
-  left: 0;
+  content: "— ";
   color: var(--nn-pink-deep);
-  font-size: 0.8em;
 }
 
 /* ---- 文章卡片：奶乎乎 ---- */
