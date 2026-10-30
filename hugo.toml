@@ -1,0 +1,98 @@
+# 站点基础配置
+baseURL = "https://ljrnn.github.io/blog/"
+locale = "zh-cn"
+defaultContentLanguage = "zh"
+title = "LJRNN 的笔记"
+theme = "PaperMod"
+
+enableRobotsTXT = true
+enableEmoji = true
+hasCJKLanguage = true
+rssLimit = 50
+summaryLength = 80
+
+# 首页额外输出 JSON，供 PaperMod 的本地搜索索引使用
+[outputs]
+  home = ["HTML", "RSS", "JSON"]
+
+[pagination]
+  pagerSize = 10
+
+[permalinks]
+  posts = "/posts/:slug/"
+
+[markup]
+  [markup.goldmark.renderer]
+    # 允许文章里直接写 HTML
+    unsafe = true
+  [markup.highlight]
+    noClasses = false
+    lineNos = false
+    codeFences = true
+    guessSyntax = true
+  [markup.tableOfContents]
+    startLevel = 2
+    endLevel = 3
+    ordered = false
+
+[params]
+  env = "production"
+  # auto / light / dark
+  defaultTheme = "auto"
+  ShowReadingTime = true
+  ShowWordCount = true
+  ShowShareButtons = false
+  ShowPostNavLinks = true
+  ShowBreadCrumbs = true
+  ShowCodeCopyButtons = true
+  ShowRssButtonInSectionTermList = true
+  ShowToc = true
+  TocOpen = false
+  ShowFullTextinRSS = false
+  hidemeta = false
+  comments = false
+  disableSpecial1stPost = false
+  disableScrollToTop = false
+
+  [params.homeInfoParams]
+    Title = "LJRNN 的笔记"
+    Content = """
+做过的、踩过的、想明白的。
+
+这里放一些工程记录 —— 多数是自己写着用的工具，偶尔也写点踩坑复盘。
+"""
+
+  [params.assets]
+    disableHLJS = true
+    favicon = "/favicon.ico"
+
+  [params.editPost]
+    URL = "https://github.com/LJRNN/blog/edit/main/content/"
+    Text = "编辑此页"
+    appendFilePath = true
+
+# 顶部菜单
+[[menus.main]]
+  name = "文章"
+  pageRef = "/posts"
+  weight = 10
+
+[[menus.main]]
+  name = "归档"
+  pageRef = "/archives"
+  weight = 20
+
+[[menus.main]]
+  name = "标签"
+  pageRef = "/tags"
+  weight = 30
+
+[[menus.main]]
+  name = "搜索"
+  pageRef = "/search"
+  weight = 40
+
+[[menus.main]]
+  name = "关于"
+  pageRef = "/about"
+  weight = 50

@@ -1,0 +1,10 @@
+# 构建产物
+public/
+resources/_gen/
+
+# Hugo 锁文件
+.hugo_build.lock
+
+# 系统文件
+.DS_Store
+Thumbs.db
