@@ -1,24 +1,26 @@
 ---
-title: "锁帧与守夜：一个 KSU 模块里的两个小玩具"
+title: "锁帧与守夜"
 date: 2026-10-30
 draft: false
 slug: "nannan-doze"
-tags: ["Android", "Shell", "KSU", "logcat"]
-categories: ["工具"]
-description: "省电模式压帧怎么办？蓝牙网络共享忘了关怎么办？答案是让 shell 睁着一只眼。"
+tags: ["Android", "Shell", "KSU"]
+categories: ["记录"]
+description: "手机的省电模式想把帧率压下去，我不想。于是写了一小段 shell 跟它较劲。"
 ShowToc: true
 TocOpen: false
 ---
 
-手机上的省电模式有一套自己的想法：开启的瞬间会把 `min_refresh_rate` 和 `peak_refresh_rate` 压到 60。理由充分——省电。但我不喜欢。帧率这件事，降下去就是降下去了，跟电量没关系。
+晚上折腾手机，发现开了省电模式之后屏幕变得有点顿。低头一查，果然是刷新率被偷偷压到 60 了。
 
-蓝牙网络共享也有一套自己的想法：蓝牙一关，PAN 随之断开，但配置状态常常残留，下一次开蓝牙的时候又莫名其妙地活过来。
+能理解，但不喜欢。
 
-两个都不大，但都是那种「能自己收拾掉」的小事。于是往我平时维护的 KSU 模块 `nannan_doze` 里塞了两个守护进程。
+帧率对我来说是体验，不是电量。省电模式可以关后台、可以限性能，动屏幕就有点过分了。于是想了个笨办法——盯着它，它一压我就改回去。
 
 ## 一、省电模式锁帧
 
-思路简单到没什么好讲的：盯着 `global low_power`，一旦是 1 就把两个刷新率钉回默认值。
+思路直白：盯着 `global low_power`，一旦是 1 就把刷新率钉回默认值。
+
+写起来比想的还短，一个 if 就完了：
 
 ```sh
 check_fps() {
@@ -33,27 +35,17 @@ check_fps() {
 }
 ```
 
-关键在那个 `if [ "$CUR_MIN" != "$DEF_MIN" ]`——**只在值被压坏时才写**。这不只是省事，是后面能跑起来的前提。
+那个 `if [ "$CUR_MIN" != "$DEF_MIN" ]` 后面会救场，先记住。
 
-## 二、蓝牙网络共享联动
+## 二、顺手收拾了蓝牙
 
-盯 `global bluetooth_on`，1 → 0 的时候收尾巴，0 → 1 的时候装死：
+同一晚上还发现个小事：蓝牙网络共享关了之后配置会残留，下次开蓝牙又活过来。
 
-```sh
-if [ "$BT" = "0" ]; then
-    svc bluetooth disable 2>/dev/null
-    settings put global tethered_config_state 0
-else
-    # 不自动开共享，交给手动开关
-    :
-fi
-```
+也一起处理了。蓝牙关掉的时候顺手把尾巴收干净；蓝牙开着的时候**不**自动打开共享。共享吃流量，得让手指决定。
 
-蓝牙开着的时候不自动把网络共享打开，是个刻意的选择。共享这东西开了就吃流量，让手指决定比让脚本决定好。
+## 三、从「问」到「等」
 
-## 三、从轮询到事件驱动
-
-上面两段初版都是 `while true; do ...; sleep 5; done`。能用，但每五秒 fork 一堆 `settings` 子进程，怎么看怎么别扭。
+上面两个初版都是 `while true; do ...; sleep 5; done`。能跑，但总觉得别扭——每五秒问一遍「变了吗变了吗」，像极了我妈催我写作业。
 
 后来在 `logcat -b events` 里翻到一行：
 
@@ -61,14 +53,12 @@ fi
 I commit_sys_config_file: [settings-1-0,28]
 ```
 
-**任何 settings 写入都会留下这条事件。** 这意味着不必再问「变了吗变了吗」，只要挂个管道等它叫醒我：
+**任何 settings 写入都会留下这条事件。** 那我不用问了，等它叫我就行。
 
 ```sh
 logcat -b events | while IFS= read -r LINE; do
     case "$LINE" in
         *commit_sys_config_file*)
-            [ -n "$LASTCHK" ] && [ $((SECONDS-LASTCHK)) -lt 2 ] && continue
-            LASTCHK=$SECONDS
             check_fps
             check_bt
             ;;
@@ -76,53 +66,32 @@ logcat -b events | while IFS= read -r LINE; do
 done
 ```
 
-三个值得注意的地方：
+改完的感觉很清爽。原来那个每五秒一轮的 shell 从 `top` 里消失了，只剩一个挂机等事件的管道。
 
-### 1. 防自激
+三个细节，都是磨出来的：
 
-我们自己 `settings put` 也会产生 `commit_sys_config_file`。理论上会陷入「写 → 事件 → 写 → 事件」的死循环。
+### 防自激
 
-但 check 函数只在值被压坏时才写。值正确的时候看一眼就走，不落笔。于是：写一次 → 事件 → check → 值对了 → 不写 → 收敛。数学上是个压缩映射，跑一次就到不动点。
+我们自己写 settings 也会产生这个事件。理论上会陷入「写 → 事件 → 写」的死循环。
 
-### 2. 零 fork 节流
+好在 check 函数只在值被压坏时才写。值正确就看一眼走人。写一次 → 事件 → check → 不写 → 收敛。
 
-`$SECONDS` 是 mksh 内建变量，不需要 fork `date` 取时间戳。节流逻辑一行搞定：
+### 零 fork 节流
 
-```sh
-[ $((SECONDS-LASTCHK)) -lt 2 ] && continue
-```
+节流用 `$SECONDS`（mksh 内建），不 fork `date`。省的是 CPU 唤醒，不显眼但攒起来是真金白银。
 
-省下来的都是真金白银的 CPU 唤醒。
+### 自愈
 
-### 3. 自愈
+logcat 管道哪天被踢了怎么办？外层再套一个 while，管道死了就兜底检查一次、睡 60 秒重启。事件驱动负责省电，轮询负责兜底，两者不冲突。
 
-logcat 管道可能死——被 logd 转储踢掉、被内存压力杀掉、Android 大版本升级改行为。外层再套一个 while：
+## 后记
 
-```sh
-while true; do
-    logcat -b events | while read LINE; do ...; done
-    # 管道死了：兜底检查一次，然后睡 60 秒重启
-    check_fps; check_bt
-    sleep 60
-done
-```
+其实这东西不需要写博客。两个 while 循环，加起来不到 80 行。
 
-事件驱动负责省电，轮询负责兜底。**两者不冲突，分层就行。**
+但那天晚上写完的时候挺开心的。深夜改自己手机上的设置，跟自己造的一个小系统较劲，最后看着它跑起来、安静下来——这种事是值得记一笔的。
 
-## 后来
-
-跑了一晚上，`nannan_watcher.log` 里只有寥寥几行：
-
-```
-2026-10-30 21:02:11 watcher v2 start fps=120/120 bt=1
-2026-10-30 22:14:03 low_power keep_fps 120/120
-2026-10-30 23:41:22 bt_off -> bt_tether down
-```
-
-省电模式开了一次，帧率被钉住了。蓝牙关了一次，尾巴收干净了。除此之外什么都没发生——这正是想要的样子。
-
-挂机听事件的 shell 比五分钟一次的闹钟省电得多。道理谁都懂，但真正动手把它做对，还是要在 `logcat -b events` 里翻一会儿。
+再过几年看到这篇，我可能已经忘了 `commit_sys_config_file` 是什么了。但应该还能想起这个晚上。
 
 ---
 
-*模块本体在 GitHub 上，源码不长，`service.sh` 一个文件就是全部逻辑。*
+*代码在 KernelSU 模块 `nannan_doze` 里，`service.sh` 一个文件就是全部逻辑。*
