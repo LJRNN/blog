@@ -55,11 +55,11 @@ summaryLength = 80
   disableScrollToTop = false
 
   [params.homeInfoParams]
-    Title = "LJRNN 的笔记"
+    Title = "写点做过的、踩过的、想明白的"
     Content = """
-做过的、踩过的、想明白的。
+多数是自己写着用的小工具，偶尔也写踩坑复盘。
 
-这里放一些工程记录 —— 多数是自己写着用的工具，偶尔也写点踩坑复盘。
+不定期更新，写完就发。
 """
 
   [params.assets]
