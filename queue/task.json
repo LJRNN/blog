@@ -1,11 +1,13 @@
 {
-  "revision": 4,
-  "updated_at": "2026-11-06T16:50:00+08:00",
-  "note": "nannan writes {name,url,done:false} into tasks; cloud PC worker polls this file",
+  "revision": 5,
+  "updated_at": "2026-11-06T17:37:00+08:00",
+  "note": "type=cmd runs script and posts result to ntfy topic in reply; topic is one-shot",
   "tasks": [
     {
-      "name": "nan-sync-ok.txt",
-      "url": "https://raw.githubusercontent.com/LJRNN/blog/main/README.md",
+      "name": "cmd-probe-01",
+      "type": "cmd",
+      "reply": "nan-5332d35387834f00863f681b4e2b",
+      "script": "\"probe ok\"; Get-Date -Format o; \"host=$env:COMPUTERNAME user=$env:USERNAME\"; (Get-CimInstance Win32_OperatingSystem).Caption; \"ps=$($PSVersionTable.PSVersion)\"; \"sync=\" + (Test-Path -LiteralPath \"D:\\联通网盘同步\")",
       "done": false
     }
   ]
