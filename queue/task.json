@@ -1,6 +1,12 @@
 {
-  "revision": 1,
-  "updated_at": "2026-11-06T16:28:34+08:00",
+  "revision": 2,
+  "updated_at": "2026-11-06T16:37:00+08:00",
   "note": "nannan writes {name,url,done:false} into tasks; cloud PC worker polls this file",
-  "tasks": []
+  "tasks": [
+    {
+      "name": "nan-selftest.txt",
+      "url": "https://raw.githubusercontent.com/LJRNN/blog/main/README.md",
+      "done": false
+    }
+  ]
 }
