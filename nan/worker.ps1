@@ -27,8 +27,8 @@ while ($true) {
   foreach ($u in $queues) {
     try {
       $r = Invoke-WebRequest -Uri ($u + '?t=' + [DateTime]::UtcNow.Ticks) -UseBasicParsing -TimeoutSec 20
-      $data = $r.Content | ConvertFrom-Json
-      break
+      $d = $r.Content | ConvertFrom-Json
+      if (-not $data -or ($d.revision -gt $data.revision)) { $data = $d }
     } catch { }
   }
   if ($data -and $data.tasks) {
