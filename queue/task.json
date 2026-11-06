@@ -1,13 +1,18 @@
 {
-  "revision": 5,
-  "updated_at": "2026-11-06T17:37:00+08:00",
-  "note": "type=cmd runs script and posts result to ntfy topic in reply; topic is one-shot",
+  "revision": 6,
+  "updated_at": "2026-11-06T21:00:30+08:00",
+  "note": "selftest: cmd probe + tiny png download into sync dir",
   "tasks": [
     {
-      "name": "cmd-probe-01",
+      "name": "cmd-selftest-02",
       "type": "cmd",
-      "reply": "nan-5332d35387834f00863f681b4e2b",
-      "script": "\"probe ok\"; Get-Date -Format o; \"host=$env:COMPUTERNAME user=$env:USERNAME\"; (Get-CimInstance Win32_OperatingSystem).Caption; \"ps=$($PSVersionTable.PSVersion)\"; \"sync=\" + (Test-Path -LiteralPath \"D:\\联通网盘同步\")",
+      "reply": "nan-dltest-1106",
+      "script": "\"selftest ok\"; Get-Date -Format o; \"host=$env:COMPUTERNAME user=$env:USERNAME\"; \"sync=\" + (Test-Path -LiteralPath \"D:\\联通网盘同步\"); \"aria=\" + (Test-Path \"C:\\aria2\\aria2c.exe\"); Get-ChildItem -LiteralPath \"D:\\联通网盘同步\" -ErrorAction SilentlyContinue | Select-Object -First 8 Name,Length | Out-String",
+      "done": false
+    },
+    {
+      "name": "nan-selftest-01.png",
+      "url": "https://cdn.jsdelivr.net/gh/LJRNN/blog@main/static/apple-touch-icon.png",
       "done": false
     }
   ]
