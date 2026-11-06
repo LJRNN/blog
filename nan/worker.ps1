@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Continue'
+﻿$ErrorActionPreference = 'Continue'
 $root = 'C:\nan'
 $work = Join-Path $root 'work'
 $doneFile = Join-Path $root 'done.json'
@@ -16,7 +16,12 @@ if (Test-Path $doneFile) {
   try { $done = @((Get-Content $doneFile -Raw -Encoding UTF8 | ConvertFrom-Json)) } catch { $done = @() }
 }
 $aria = 'C:\aria2\aria2c.exe'
-Log 'worker up'
+$sync = 'D:\联通网盘同步'
+if (-not (Test-Path -LiteralPath $sync)) {
+  $alt = Get-ChildItem -LiteralPath 'D:\' -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($alt) { $sync = $alt.FullName }
+}
+Log ('worker up | sync -> ' + $sync)
 while ($true) {
   $data = $null
   foreach ($u in $queues) {
@@ -43,12 +48,12 @@ while ($true) {
         }
         if (-not (Test-Path $part) -and (Test-Path $merged)) { $part = $merged }
         if ((Test-Path $part) -and ((Get-Item $part).Length -gt 0)) {
-          if (Test-Path 'D:\') {
-            Move-Item -Force $part (Join-Path 'D:\' $name)
-            Log ('-> D:\ ' + $name)
+          if (Test-Path -LiteralPath $sync) {
+            Move-Item -Force $part (Join-Path $sync $name)
+            Log ('-> ' + $sync + '\' + $name)
           } else {
             Move-Item -Force $part $merged
-            Log ('-> ' + $merged + ' (D:\ missing, install wopan)')
+            Log ('-> ' + $merged + ' (no sync dir on D:)')
           }
           $done += $tk.name
           Set-Content -Path $doneFile -Value (ConvertTo-Json -InputObject @($done) -Compress) -Encoding UTF8
