@@ -1,19 +1,25 @@
 ' =====================================================================
 ' nan.vbs   one file, nothing else needed
 '
-' double click once  -> starts hidden, adds itself to Startup, keeps running
+' double click once  -> starts (single instance, kills the old copy)
+' double click again -> reloads this file, that is how you upgrade
 ' then to send a file: open https://github.com/LJRNN/blog/releases/new
-'   title : anything
-'   body  : the download link
+'   title : anything, it becomes the file name
+'   body  : the download link, one or more
 '   publish, wait two minutes
-' the file lands in the netdisk sync folder on D: and the client pushes it
+'
+' bilibili links are resolved by the script itself, so they never expire.
+'   paste either  https://www.bilibili.com/video/BV1xxxxxxxxx
+'              or  https://b23.tv/xxxxxxx  (full url, not the short code)
+'
+' files land in the netdisk sync folder on D: and the client pushes them
 ' to the phone. log is at C:\nan\dl.log
 '
 ' no cmd, no powershell, no python, no curl, no admin rights.
 ' pure ASCII on purpose so no codepage can break it.
 ' =====================================================================
 
-Dim oFso, oSh, sRoot, sSync, sLog, sSeen, sAtom, sAmp, lTick, sSelf
+Dim oFso, oSh, sRoot, sSync, sLog, sSeen, sFail, sAtom, sAmp, lTick, sSelf
 
 Set oFso = CreateObject("Scripting.FileSystemObject")
 Set oSh  = CreateObject("WScript.Shell")
@@ -24,6 +30,7 @@ sRoot = "C:\nan"
 sAtom = "https://github.com/LJRNN/blog/releases.atom"
 sLog  = sRoot & "\dl.log"
 sSeen = sRoot & "\seen.txt"
+sFail = sRoot & "\fail.txt"
 sSelf = WScript.ScriptFullName
 
 ' netdisk sync folder on D: built from code points, file stays ASCII
@@ -61,7 +68,7 @@ Sub Main()
 End Sub
 
 Sub Boot()
-  Dim sLink, oLink
+  Dim sLink, oLink, lKill
   sLink = oSh.SpecialFolders("Startup") & "\nan.lnk"
   If Not oFso.FileExists(sLink) Then
     Set oLink = oSh.CreateShortcut(sLink)
@@ -72,39 +79,44 @@ Sub Boot()
     oLink.Save
     Note "startup link added"
   End If
-  If Alive() Then
-    MsgBox "already running" & vbCrLf & vbCrLf & "log " & sLog, 64, "nan"
-    Exit Sub
-  End If
+  lKill = KillOld()
   oSh.Run "wscript.exe """ & sSelf & """ /bg", 0, False
-  MsgBox "running in background" & vbCrLf & vbCrLf & _
+  MsgBox "running in background" & vbCrLf & _
+         "old copies killed: " & lKill & vbCrLf & vbCrLf & _
          "send a task: https://github.com/LJRNN/blog/releases/new" & vbCrLf & _
-         "put the link in the body, publish, wait 2 min" & vbCrLf & vbCrLf & _
+         "title becomes the file name, body holds the link" & vbCrLf & _
+         "publish, wait 2 min" & vbCrLf & vbCrLf & _
          "files: " & sSync & vbCrLf & "log: " & sLog, 64, "nan"
 End Sub
 
-Function Alive()
-  Dim oWmi, oPs, oP
-  Alive = False
+Function KillOld()
+  Dim oWmi, oPs, oP, lN
+  lN = 0
   On Error Resume Next
   Set oWmi = GetObject("winmgmts:\\.\root\cimv2")
   If Err.Number <> 0 Then
     On Error GoTo 0
+    KillOld = 0
     Exit Function
   End If
-  Set oPs = oWmi.ExecQuery("select CommandLine from Win32_Process where Name='wscript.exe'")
+  Set oPs = oWmi.ExecQuery("select * from Win32_Process where Name='wscript.exe'")
   For Each oP In oPs
     If Not IsNull(oP.CommandLine) Then
       If InStr(LCase(oP.CommandLine), "nan.vbs") > 0 Then
-        If InStr(LCase(oP.CommandLine), "/bg") > 0 Then Alive = True
+        If InStr(LCase(oP.CommandLine), "/bg") > 0 Then
+          oP.Terminate
+          lN = lN + 1
+        End If
       End If
     End If
   Next
   On Error GoTo 0
+  KillOld = lN
 End Function
 
 Function Round1()
   Dim lGot, sSeenList, sXml, oRe, oMs, i, sEntry, sId, aUrl, k, sDest
+  Dim lCnt, sTitle, lBad, sU, lTries
   lGot = 0
   sSeenList = SeenText()
   sXml = GetText(sAtom & "?t=" & CLng(Timer * 100))
@@ -126,14 +138,39 @@ Function Round1()
     If Len(sId) > 0 Then
       If InStr(sSeenList, "|" & sId & "|") = 0 Then
         aUrl = Links(sEntry)
+        lCnt = 0
+        For k = 0 To UBound(aUrl)
+          If Len(aUrl(k)) > 0 Then lCnt = lCnt + 1
+        Next
+        sTitle = Pick(sEntry, "title")
+        lBad = 0
         For k = 0 To UBound(aUrl)
           If Len(aUrl(k)) > 0 Then
-            sDest = sSync & "\" & NiceName(aUrl(k))
-            If Pull(aUrl(k), sDest) Then lGot = lGot + 1
+            sU = BiliOf(aUrl(k))
+            If Len(sU) = 0 Then
+              lBad = lBad + 1
+            Else
+              If lCnt = 1 Then
+                sDest = sSync & "\" & NiceTitle(sTitle) & ExtOf(sU)
+              Else
+                sDest = sSync & "\" & NiceName(aUrl(k))
+              End If
+              If Pull(sU, sDest) Then lGot = lGot + 1 Else lBad = lBad + 1
+            End If
           End If
         Next
-        SeenAdd sId
-        sSeenList = sSeenList & sId & "|"
+        If lBad = 0 Then
+          SeenAdd sId
+          sSeenList = sSeenList & sId & "|"
+        Else
+          lTries = FailBump(sId)
+          Note "bad " & lBad & " try " & lTries & " " & sId
+          If lTries >= 3 Then
+            Note "give up " & sId
+            SeenAdd sId
+            sSeenList = sSeenList & sId & "|"
+          End If
+        End If
       End If
     End If
   Next
@@ -175,6 +212,62 @@ Function Links(sTxt)
   Links = aOut
 End Function
 
+' bilibili page link -> direct mp4 link, fetched fresh every time
+Function BiliOf(sUrl)
+  Dim sBv, sCid, sApi, sPlay, sMp4
+  BiliOf = sUrl
+  If InStr(1, sUrl, "bilibili.com", 1) = 0 Then Exit Function
+
+  sBv = Rx(sUrl, "BV[0-9A-Za-z]{10}")
+  If Len(sBv) = 0 Then
+    If InStr(1, sUrl, "b23.tv", 1) > 0 Then sBv = Rx(GetText(sUrl), "BV[0-9A-Za-z]{10}")
+  End If
+  If Len(sBv) = 0 Then
+    Note "bili no bv " & sUrl
+    BiliOf = ""
+    Exit Function
+  End If
+
+  sApi = "https://api.bilibili.com/x/player/view?bvid=" & sBv
+  sCid = Rx(GetText(sApi), """cid"":([0-9]+)")
+  If Len(sCid) = 0 Then
+    Note "bili no cid " & sBv
+    BiliOf = ""
+    Exit Function
+  End If
+
+  sPlay = "https://api.bilibili.com/x/player/playurl?bvid=" & sBv & "&cid=" & sCid & _
+          "&qn=16&fnval=1&platform=html5&high_quality=1"
+  sMp4 = Rx(GetText(sPlay), """url"":""([^""]+)""")
+  If Len(sMp4) = 0 Then
+    Note "bili no url " & sBv
+    BiliOf = ""
+    Exit Function
+  End If
+  sMp4 = Replace(sMp4, "\/", "/")
+  sMp4 = Replace(sMp4, "\u0026", sAmp)
+  sMp4 = Replace(sMp4, sAmp & "amp;", sAmp)
+  Note "bili " & sBv & " cid " & sCid
+  BiliOf = sMp4
+End Function
+
+Function Rx(sTxt, sPat)
+  Dim oRe, oM
+  Rx = ""
+  If Len(sTxt) = 0 Then Exit Function
+  Set oRe = New RegExp
+  oRe.Pattern = sPat
+  oRe.IgnoreCase = True
+  Set oM = oRe.Execute(sTxt)
+  If oM.Count > 0 Then
+    If oM(0).SubMatches.Count > 0 Then
+      Rx = oM(0).SubMatches(0)
+    Else
+      Rx = oM(0).Value
+    End If
+  End If
+End Function
+
 Function Pick(sTxt, sTag)
   Dim oRe, oM
   Set oRe = New RegExp
@@ -196,17 +289,50 @@ Function UnEsc(s)
   UnEsc = Replace(s, sAmp & "amp;", sAmp)
 End Function
 
-Function NiceName(sUrl)
-  Dim sP, i, aBad, k
+Function Clean(s)
+  Dim aBad, k
+  s = Replace(s, Chr(34), "")
+  aBad = Array("\", "/", ":", "*", "?", "<", ">", "|", vbCr, vbLf, vbTab)
+  For k = 0 To UBound(aBad)
+    s = Replace(s, aBad(k), "_")
+  Next
+  Clean = Trim(s)
+End Function
+
+Function NiceTitle(sT)
+  Dim sP
+  sP = Clean(sT)
+  Do While InStr(sP, "  ") > 0
+    sP = Replace(sP, "  ", " ")
+  Loop
+  If Len(sP) = 0 Then sP = "file" & CLng(Timer * 100)
+  If Len(sP) > 60 Then sP = Left(sP, 60)
+  NiceTitle = sP
+End Function
+
+Function ExtOf(sUrl)
+  Dim sP, i, j, sE
   sP = sUrl
   If InStr(sP, "?") > 0 Then sP = Left(sP, InStr(sP, "?") - 1)
   i = InStrRev(sP, "/")
   If i > 0 Then sP = Mid(sP, i + 1)
-  sP = Replace(sP, Chr(34), "")
-  aBad = Array("\", "/", ":", "*", "?", "<", ">", "|")
-  For k = 0 To UBound(aBad)
-    sP = Replace(sP, aBad(k), "_")
-  Next
+  sE = ""
+  j = InStrRev(sP, ".")
+  If j > 0 Then
+    sE = LCase(Mid(sP, j))
+    If Len(sE) > 6 Then sE = ""
+    If InStr(sE, "_") > 0 Then sE = ""
+  End If
+  ExtOf = sE
+End Function
+
+Function NiceName(sUrl)
+  Dim sP, i
+  sP = sUrl
+  If InStr(sP, "?") > 0 Then sP = Left(sP, InStr(sP, "?") - 1)
+  i = InStrRev(sP, "/")
+  If i > 0 Then sP = Mid(sP, i + 1)
+  sP = Clean(sP)
   If Len(sP) = 0 Then sP = "file" & CLng(Timer * 100)
   If Len(sP) > 100 Then sP = Right(sP, 100)
   NiceName = sP
@@ -226,7 +352,8 @@ Function Http(sUrl)
       oX.open "GET", sUrl, False
       If Err.Number = 0 Then
         Err.Clear
-        oX.setRequestHeader "User-Agent", "nan/1.0"
+        oX.setRequestHeader "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        If InStr(1, sUrl, "bilibili", 1) + InStr(1, sUrl, "bilivideo", 1) > 0 Then oX.setRequestHeader "Referer", "https://www.bilibili.com/"
         oX.send
         If Err.Number = 0 Then
           If oX.status >= 200 And oX.status < 300 Then
@@ -258,6 +385,7 @@ Function Pull(sUrl, sDest)
     On Error Resume Next
     If oFso.GetFile(sDest).Size > 0 Then
       On Error GoTo 0
+      Note "skip exists " & sDest
       Exit Function
     End If
     On Error GoTo 0
@@ -311,6 +439,37 @@ Sub SeenAdd(sId)
   oF.Close
   On Error GoTo 0
 End Sub
+
+Function FailBump(sId)
+  Dim sAll, aLine, i, sOne, lN, oF
+  lN = 0
+  sAll = ""
+  On Error Resume Next
+  If oFso.FileExists(sFail) Then sAll = oFso.OpenTextFile(sFail, 1).ReadAll
+  On Error GoTo 0
+  aLine = Split(Replace(sAll, vbCr, ""), vbLf)
+  sAll = ""
+  For i = 0 To UBound(aLine)
+    sOne = Trim(aLine(i))
+    If Len(sOne) > 0 Then
+      If InStr(sOne, "|") > 0 Then
+        If InStr(sOne, sId & "|") = 1 Then
+          lN = CLng(Mid(sOne, InStr(sOne, "|") + 1)) + 1
+        Else
+          sAll = sAll & sOne & vbCrLf
+        End If
+      End If
+    End If
+  Next
+  If lN = 0 Then lN = 1
+  sAll = sAll & sId & "|" & lN & vbCrLf
+  On Error Resume Next
+  Set oF = oFso.CreateTextFile(sFail, True, False)
+  oF.Write sAll
+  oF.Close
+  On Error GoTo 0
+  FailBump = lN
+End Function
 
 Sub Pub()
   On Error Resume Next
