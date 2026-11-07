@@ -19,7 +19,7 @@
 ' pure ASCII on purpose so no codepage can break it.
 ' =====================================================================
 
-Dim oFso, oSh, sRoot, sSync, sLog, sSeen, sFail, sAtom, sAmp, lTick, sSelf
+Dim oFso, oSh, sRoot, sSync, sWork, sLog, sSeen, sFail, sAtom, sAmp, lTick, sSelf
 
 Set oFso = CreateObject("Scripting.FileSystemObject")
 Set oSh  = CreateObject("WScript.Shell")
@@ -31,6 +31,7 @@ sAtom = "https://github.com/LJRNN/blog/releases.atom"
 sLog  = sRoot & "\dl.log"
 sSeen = sRoot & "\seen.txt"
 sFail = sRoot & "\fail.txt"
+sWork = sRoot & "\work"
 sSelf = WScript.ScriptFullName
 
 ' netdisk sync folder on D: built from code points, file stays ASCII
@@ -40,6 +41,7 @@ Main
 
 Sub Main()
   If Not oFso.FolderExists(sRoot) Then oFso.CreateFolder sRoot
+  If Not oFso.FolderExists(sWork) Then oFso.CreateFolder sWork
   If Not oFso.FolderExists(sSync) Then
     sSync = sRoot & "\downloads"
     If Not oFso.FolderExists(sSync) Then oFso.CreateFolder sSync
@@ -389,10 +391,10 @@ Function CurlPull(sUrl, sDest)
   sExe = oSh.ExpandEnvironmentStrings("%SystemRoot%") & "\System32\curl.exe"
   If Not oFso.FileExists(sExe) Then Exit Function
 
-  sPart = sDest & ".part"
+  sPart = sWork & "\" & oFso.GetFileName(sDest) & ".part"
   If oFso.FileExists(sPart) Then oFso.DeleteFile sPart, True
 
-  sCmd = Q(sExe) & " -L --fail --retry 2 --retry-delay 3 --connect-timeout 20"
+  sCmd = Q(sExe) & " -L -sS --fail --retry 2 --retry-delay 3 --connect-timeout 20"
   sCmd = sCmd & " -A " & Q("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
   If InStr(1, sUrl, "bilibili", 1) + InStr(1, sUrl, "bilivideo", 1) > 0 Then
     sCmd = sCmd & " -e " & Q("https://www.bilibili.com/")
