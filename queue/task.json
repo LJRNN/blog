@@ -1,18 +1,25 @@
 {
-  "revision": 6,
-  "updated_at": "2026-11-06T21:00:30+08:00",
-  "note": "selftest: cmd probe + tiny png download into sync dir",
+  "revision": 7,
+  "updated_at": "2026-11-07T15:00:00+08:00",
+  "note": "alist + rclone install on cloud pc",
   "tasks": [
     {
       "name": "cmd-selftest-02",
       "type": "cmd",
       "reply": "nan-dltest-1106",
-      "script": "\"selftest ok\"; Get-Date -Format o; \"host=$env:COMPUTERNAME user=$env:USERNAME\"; \"sync=\" + (Test-Path -LiteralPath \"D:\\联通网盘同步\"); \"aria=\" + (Test-Path \"C:\\aria2\\aria2c.exe\"); Get-ChildItem -LiteralPath \"D:\\联通网盘同步\" -ErrorAction SilentlyContinue | Select-Object -First 8 Name,Length | Out-String",
-      "done": false
+      "script": "1",
+      "done": true
     },
     {
       "name": "nan-selftest-01.png",
       "url": "https://cdn.jsdelivr.net/gh/LJRNN/blog@main/static/apple-touch-icon.png",
+      "done": true
+    },
+    {
+      "name": "alist-rclone-setup-01",
+      "type": "cmd",
+      "reply": "nan-reply-alist",
+      "script": "$ErrorActionPreference='Continue'\n$out=@()\nforeach($d in 'C:\\alist','C:\\rclone'){ New-Item -ItemType Directory -Force -Path $d | Out-Null }\n$a='C:\\alist\\alist.zip'\n$am=@(\n 'https://github.com/AlistGo/alist/releases/download/v3.66.0/alist-windows-amd64.zip',\n 'https://gh-proxy.com/https://github.com/AlistGo/alist/releases/download/v3.66.0/alist-windows-amd64.zip',\n 'https://ghfast.top/https://github.com/AlistGo/alist/releases/download/v3.66.0/alist-windows-amd64.zip'\n)\n$got=$false\nforeach($m in $am){\n  if($got){break}\n  try{\n    Invoke-WebRequest -Uri $m -OutFile $a -TimeoutSec 150 -UseBasicParsing\n    if((Test-Path $a) -and ((Get-Item $a).Length -gt 1000000)){ $out+='alist dl ok'; $got=$true }\n  }catch{ $out+='alist dl err: '+$_.Exception.Message.Substring(0,[Math]::Min(80,$_.Exception.Message.Length)) }\n}\nif($got){ try{ Expand-Archive -Path $a -DestinationPath 'C:\\alist' -Force; $out+='alist exe='+(Test-Path 'C:\\alist\\alist.exe') }catch{ $out+='unzip err '+$_.Exception.Message } }\n$r='C:\\rclone\\rclone.zip'\n$rm=@(\n 'https://github.com/rclone/rclone/releases/download/v1.76.0/rclone-v1.76.0-windows-amd64.zip',\n 'https://gh-proxy.com/https://github.com/rclone/rclone/releases/download/v1.76.0/rclone-v1.76.0-windows-amd64.zip',\n 'https://ghfast.top/https://github.com/rclone/rclone/releases/download/v1.76.0/rclone-v1.76.0-windows-amd64.zip'\n)\n$rg=$false\nforeach($m in $rm){\n  if($rg){break}\n  try{\n    Invoke-WebRequest -Uri $m -OutFile $r -TimeoutSec 200 -UseBasicParsing\n    if((Test-Path $r) -and ((Get-Item $r).Length -gt 1000000)){ $out+='rclone dl ok'; $rg=$true }\n  }catch{ $out+='rclone dl err: '+$_.Exception.Message.Substring(0,[Math]::Min(80,$_.Exception.Message.Length)) }\n}\nif($rg){ try{ Expand-Archive -Path $r -DestinationPath 'C:\\rclone' -Force; $out+='rclone exe='+(Get-ChildItem 'C:\\rclone' -Recurse -Filter rclone.exe | Select-Object -First 1 -ExpandProperty FullName) }catch{ $out+='unzip err '+$_.Exception.Message } }\nif(Test-Path 'C:\\alist\\alist.exe'){\n  Push-Location 'C:\\alist'\n  $out+='pw: ' + ((& 'C:\\alist\\alist.exe' admin random 2>&1) -join ' ')\n  Pop-Location\n}\n$out -join \"`n\"",
       "done": false
     }
   ]
