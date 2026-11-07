@@ -1,17 +1,12 @@
 // nan-dl.js   --  turn a GitHub release note into downloaded files
 //
-// what it does
-//   1. reads https://github.com/LJRNN/blog/releases.atom every 2 minutes
-//   2. pulls every http(s) link found inside a release note
-//   3. saves the file into the Union-Netdisk sync folder on D:
-//      (the netdisk client uploads it, you grab it on the phone)
-//   4. writes a readable log there too: _nan-dl-log.txt
+// reads https://github.com/LJRNN/blog/releases.atom every 2 minutes,
+// pulls every http(s) link inside a release note, saves it into the
+// Union-Netdisk sync folder on D: so the netdisk client uploads it
+// and you pick it up on the phone. also writes a log there.
 //
-// how to run
-//   start-nan-dl.vbs   -> runs hidden in the background
-//   test-nan-dl.vbs    -> one pass, prints the log, then close
-//
-// needs nothing: no cmd, no powershell, no python, no curl, no admin rights.
+// run: start-nan-dl.vbs (hidden)   |   test-nan-dl.vbs (one pass + log popup)
+// needs nothing: no cmd, no powershell, no python, no curl, no admin.
 
 var ROOT = 'C:\\nan';
 var OUT  = 'D:\\' + String.fromCharCode(0x8054, 0x901A, 0x7F51, 0x76D8, 0x540C, 0x6B65);
@@ -40,7 +35,7 @@ function log(m){
   try{ FSO.OpenTextFile(LOG, 8, true, -1).WriteLine(stamp() + ' ' + m); }catch(e){}
 }
 
-// try several COM http stacks, locked-down boxes often break a few of them
+// several COM http stacks: locked-down boxes often break a few of them
 function req(url, asBinary){
   var names = ['MSXML2.XMLHTTP.6.0', 'MSXML2.XMLHTTP.3.0',
                'MSXML2.ServerXMLHTTP.6.0', 'WinHttp.WinHttpRequest.5.1'];
