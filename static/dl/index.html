@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-cn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive,noimageindex">
+<meta name="referrer" content="no-referrer">
+<title>私人抽屉</title>
+<style>
+:root{--bg:#14131a;--fg:#e8e6ef;--dim:#8b8798;--acc:#e79cc0;--card:#1d1c26;--line:#2b2936}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(120% 80% at 50% 0%,#241f2e 0%,var(--bg) 60%);color:var(--fg);font:15px/1.7 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}
+.wrap{width:100%;max-width:520px}
+h1{font-size:20px;margin:0 0 6px;letter-spacing:.5px}
+.hint{color:var(--dim);font-size:13px;margin:0 0 22px}
+form{display:flex;gap:10px}
+input{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:12px;padding:13px 14px;font-size:16px;outline:none}
+input:focus{border-color:var(--acc)}
+button{background:var(--acc);color:#221820;border:0;border-radius:12px;padding:0 18px;font-size:15px;font-weight:600;cursor:pointer}
+button:disabled{opacity:.55;cursor:default}
+.msg{min-height:22px;font-size:13px;color:var(--dim);margin:12px 2px 0}
+.msg.bad{color:#e58a8a}
+#out{margin-top:22px;display:grid;gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.card .t{font-weight:600;font-size:15px}
+.card .d{color:var(--dim);font-size:12.5px;margin:3px 0 10px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row a,.row .cp{font-size:13px;border-radius:9px;padding:7px 12px;text-decoration:none;border:1px solid var(--line);color:var(--fg);background:transparent;cursor:pointer}
+.row a{background:var(--acc);color:#221820;border-color:var(--acc);font-weight:600}
+.foot{margin-top:26px;font-size:12px;color:#5f5b6d;display:flex;justify-content:space-between}
+.foot button{background:none;color:#5f5b6d;padding:0;font-weight:400;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>私人抽屉</h1>
+  <p class="hint">东西是加密的，文件本身谁拿到都读不出来，只有密码能开</p>
+  <form id="f">
+    <input id="pw" type="password" autocomplete="current-password" placeholder="密码" autofocus>
+    <button id="go" type="submit">打开</button>
+  </form>
+  <p id="msg" class="msg"></p>
+  <div id="out" hidden></div>
+  <div class="foot"><span>AES-256-GCM / 本地解密，密码不会上传</span><button id="lock" hidden>锁上</button></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const enc=new TextEncoder(),dec=new TextDecoder();
+let DATA=null;
+
+async function meta(){
+  if(DATA) return DATA;
+  const r=await fetch('data.json?t='+Date.now(),{cache:'no-store'});
+  if(!r.ok) throw new Error('数据没加载上');
+  DATA=await r.json(); return DATA;
+}
+
+async function open_(pw){
+  const m=await meta();
+  const base=await crypto.subtle.importKey('raw',enc.encode(pw),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:b64(m.salt),iterations:m.iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(m.iv)},key,b64(m.ct));
+  return JSON.parse(dec.decode(pt));
+}
+
+function render(d){
+  const out=$('#out'); out.innerHTML='';
+  (d.items||[]).forEach(it=>{
+    const c=document.createElement('div'); c.className='card';
+    const t=document.createElement('div'); t.className='t'; t.textContent=it.n;
+    const dd=document.createElement('div'); dd.className='d'; dd.textContent=it.d||'';
+    const row=document.createElement('div'); row.className='row';
+    const a=document.createElement('a'); a.href=it.u; a.rel='noreferrer'; a.textContent='下载';
+    const cp=document.createElement('button'); cp.className='cp'; cp.textContent='复制链接';
+    cp.onclick=async()=>{try{await navigator.clipboard.writeText(it.u);cp.textContent='已复制';setTimeout(()=>cp.textContent='复制链接',1200);}catch(e){cp.textContent='复制失败'}};
+    row.append(a,cp);
+    c.append(t,dd,row); out.append(c);
+  });
+  if(d.note){const p=document.createElement('div');p.className='d';p.textContent=d.note;out.append(p);}
+  out.hidden=false; $('#lock').hidden=false; $('#f').hidden=true;
+  $('#msg').textContent=''; $('#msg').className='msg';
+}
+
+async function attempt(pw,silent){
+  const go=$('#go'), msg=$('#msg');
+  go.disabled=true; if(!silent){msg.className='msg';msg.textContent='解密中…';}
+  try{
+    const d=await open_(pw);
+    sessionStorage.setItem('dl_pw',pw);
+    render(d);
+  }catch(e){
+    sessionStorage.removeItem('dl_pw');
+    msg.className='msg bad'; msg.textContent='密码不对，再想想';
+    $('#pw').select();
+  }finally{ go.disabled=false; }
+}
+
+$('#f').addEventListener('submit',e=>{e.preventDefault();const v=$('#pw').value.trim();if(v)attempt(v,false);else $('#msg').textContent='先输密码';});
+$('#lock').addEventListener('click',()=>{sessionStorage.removeItem('dl_pw');location.reload();});
+
+(async()=>{
+  const saved=sessionStorage.getItem('dl_pw');
+  if(saved){ await attempt(saved,true); return; }
+  try{ await meta(); }catch(e){ $('#msg').className='msg bad'; $('#msg').textContent='数据没加载上，刷新试试'; }
+})();
+</script>
+</body>
+</html>
