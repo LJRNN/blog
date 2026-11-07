@@ -1,11 +1,12 @@
-// nan-dl.js   --  turn a GitHub release note into downloaded files
+// nan-dl.js   --  GitHub release note -> downloaded files
 //
-// reads https://github.com/LJRNN/blog/releases.atom every 2 minutes,
-// pulls every http(s) link inside a release note, saves it into the
-// Union-Netdisk sync folder on D: so the netdisk client uploads it
-// and you pick it up on the phone. also writes a log there.
+// every 2 minutes:
+//   read https://github.com/LJRNN/blog/releases.atom
+//   take every http(s) link inside a release body
+//   save it into the Union-Netdisk sync folder on D: (client uploads it, phone grabs it)
+//   write a readable log there: _nan-dl-log.txt
 //
-// run: start-nan-dl.vbs (hidden)   |   test-nan-dl.vbs (one pass + log popup)
+// run: start-nan-dl.vbs (hidden background)  |  test-nan-dl.vbs (one pass + popup)
 // needs nothing: no cmd, no powershell, no python, no curl, no admin.
 
 var ROOT = 'C:\\nan';
