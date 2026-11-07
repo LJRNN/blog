@@ -31,15 +31,28 @@ function log(msg) {
 function exists(p) { try { return fso().FileExists(p); } catch (e) { return false; } }
 function sizeOf(p) { try { return fso().GetFile(p).Size; } catch (e) { return -1; } }
 
+function httpObj() {
+  var ids = ['MSXML2.ServerXMLHTTP.6.0', 'MSXML2.ServerXMLHTTP.3.0', 'MSXML2.XMLHTTP', 'WinHttp.WinHttpRequest.5.1'];
+  for (var i = 0; i < ids.length; i++) {
+    try { return new ActiveXObject(ids[i]); } catch (e) {}
+  }
+  throw new Error('no http object available');
+}
+
 function httpGet(url, binary) {
-  var x = new ActiveXObject('MSXML2.ServerXMLHTTP.6.0');
+  var x = httpObj();
   try { x.setTimeouts(20000, 20000, 60000, 1800000); } catch (e) {}
   x.open('GET', url, false);
-  x.setRequestHeader('User-Agent', 'nan-dl/1.0');
+  try { x.setRequestHeader('User-Agent', 'nan-dl/1.0'); } catch (e) {}
+  try { x.setRequestHeader('Cache-Control', 'no-cache'); } catch (e) {}
   x.send();
-  var st = x.status;
+  var st = 0;
+  try { st = x.status; } catch (e) { st = 0; }
   if (st < 200 || st >= 300) throw new Error('HTTP ' + st);
-  return binary ? x.responseBody : x.responseText;
+  if (typeof x.responseBody !== 'undefined' && binary) return x.responseBody;
+  if (typeof x.ResponseBody !== 'undefined' && binary) return x.ResponseBody;
+  if (binary) return x.responseText;
+  return x.responseText;
 }
 
 function saveBinary(url, dest) {
