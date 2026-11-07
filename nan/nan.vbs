@@ -379,6 +379,10 @@ Function GetText(sUrl)
   On Error GoTo 0
 End Function
 
+Function Q(s)
+  Q = Chr(34) & s & Chr(34)
+End Function
+
 Function CurlPull(sUrl, sDest)
   Dim sExe, sPart, sCmd, lRc
   CurlPull = False
@@ -388,12 +392,12 @@ Function CurlPull(sUrl, sDest)
   sPart = sDest & ".part"
   If oFso.FileExists(sPart) Then oFso.DeleteFile sPart, True
 
-  sCmd = """" & sExe & """" -L --fail --retry 2 --retry-delay 3 --connect-timeout 20 "
-  sCmd = sCmd & "-A ""Mozilla/5.0 (Windows NT 10.0; Win64; x64)"" "
+  sCmd = Q(sExe) & " -L --fail --retry 2 --retry-delay 3 --connect-timeout 20"
+  sCmd = sCmd & " -A " & Q("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
   If InStr(1, sUrl, "bilibili", 1) + InStr(1, sUrl, "bilivideo", 1) > 0 Then
-    sCmd = sCmd & "-e ""https://www.bilibili.com/"" "
+    sCmd = sCmd & " -e " & Q("https://www.bilibili.com/")
   End If
-  sCmd = sCmd & "-o """" & sPart & """" """" & sUrl & """""
+  sCmd = sCmd & " -o " & Q(sPart) & " " & Q(sUrl)
 
   On Error Resume Next
   lRc = oSh.Run(sCmd, 0, True)
@@ -411,15 +415,20 @@ Function CurlPull(sUrl, sDest)
         If oFso.FileExists(sDest) Then oFso.DeleteFile sDest, True
         oFso.MoveFile sPart, sDest
         If Err.Number = 0 Then
+          Err.Clear
           On Error GoTo 0
           Note "ok " & sDest & " " & oFso.GetFile(sDest).Size
           CurlPull = True
           Exit Function
         End If
       End If
+      Err.Clear
       On Error GoTo 0
     End If
+  Else
+    Note "curl rc " & lRc
   End If
+
   On Error Resume Next
   If oFso.FileExists(sPart) Then oFso.DeleteFile sPart, True
   On Error GoTo 0
