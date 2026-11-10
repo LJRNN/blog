@@ -1,4 +1,4 @@
 {
-  "rev": 1,
-  "note": "bump worker $ver together with this file to trigger self-update"
+  "rev": 2,
+  "note": "nan.vbs v2 auto-update baseline"
 }
