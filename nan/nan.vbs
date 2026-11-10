@@ -437,6 +437,7 @@ Function CurlPull(sUrl, sDest)
 End Function
 
 Function Pull(sUrl, sDest)
+  Dim aTry, i
   Pull = False
   If oFso.FileExists(sDest) Then
     On Error Resume Next
@@ -447,37 +448,33 @@ Function Pull(sUrl, sDest)
     End If
     On Error GoTo 0
   End If
+  aTry = GhCandidates(sUrl)
+  For i = 0 To UBound(aTry)
+    Note "get [" & i & "] " & aTry(i)
+    If CurlPull(aTry(i), sDest) Then
+      Pull = True
+      Exit Function
+    End If
+  Next
+  Note "fail all " & sDest
+End Function
 
-  Note "get " & sUrl
-  If CurlPull(sUrl, sDest) Then
-    Pull = True
+' github links go through mirror prefixes, first one that works wins
+Function GhCandidates(sUrl)
+  Dim sLow
+  sLow = LCase(sUrl)
+  If InStr(sLow, "github.com") = 0 And InStr(sLow, "githubusercontent.com") = 0 Then
+    GhCandidates = Array(sUrl)
     Exit Function
   End If
-
-  Dim oX, oSt
-  Set oX = Http(sUrl)
-  If oX Is Nothing Then
-    Note "fail " & sDest
+  If InStr(sLow, "/https://github") > 0 Or InStr(sLow, "/http://github") > 0 Then
+    GhCandidates = Array(sUrl)
     Exit Function
   End If
-
-  On Error Resume Next
-  Set oSt = CreateObject("ADODB.Stream")
-  oSt.Type = 1
-  oSt.Open
-  oSt.Write oX.responseBody
-  If oFso.FileExists(sDest) Then oFso.DeleteFile sDest
-  oSt.SaveToFile sDest, 2
-  oSt.Close
-  If Err.Number <> 0 Then
-    Note "fail " & sDest & " " & Err.Description
-    Err.Clear
-    On Error GoTo 0
-    Exit Function
-  End If
-  On Error GoTo 0
-  Note "ok " & sDest & " " & oFso.GetFile(sDest).Size
-  Pull = True
+  GhCandidates = Array( _
+    "https://gh-proxy.com/" & sUrl, _
+    "https://ghfast.top/" & sUrl, _
+    sUrl )
 End Function
 
 Function SeenText()
