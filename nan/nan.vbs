@@ -3,6 +3,7 @@
 '
 ' double click once  -> starts (single instance, kills the old copy)
 ' double click again -> reloads this file, that is how you upgrade
+' auto-update: bump version.json rev over lMyRev, worker swaps itself and restarts
 ' then to send a file: open https://github.com/LJRNN/blog/releases/new
 '   title : anything, it becomes the file name
 '   body  : the download link, one or more
@@ -19,7 +20,7 @@
 ' pure ASCII on purpose so no codepage can break it.
 ' =====================================================================
 
-Dim oFso, oSh, sRoot, sSync, sWork, sLog, sSeen, sFail, sAtom, sAmp, lTick, sSelf
+Dim oFso, oSh, sRoot, sSync, sWork, sLog, sSeen, sFail, sAtom, sAmp, lTick, sSelf, sStd, sVerU, lMyRev
 
 Set oFso = CreateObject("Scripting.FileSystemObject")
 Set oSh  = CreateObject("WScript.Shell")
@@ -33,6 +34,9 @@ sSeen = sRoot & "\seen.txt"
 sFail = sRoot & "\fail.txt"
 sWork = sRoot & "\work"
 sSelf = WScript.ScriptFullName
+lMyRev = 2
+sStd  = sRoot & "\nan.vbs"
+sVerU = "https://raw.githubusercontent.com/LJRNN/blog/main/nan/version.json"
 
 ' netdisk sync folder on D: built from code points, file stays ASCII
 sSync = "D:\" & ChrW(32852) & ChrW(36890) & ChrW(32593) & ChrW(30424) & ChrW(21516) & ChrW(27493)
@@ -52,8 +56,9 @@ Sub Main()
     Exit Sub
   End If
 
+  Normalize
   Note "boot out=" & sSync
-  Dim n
+  Dim n, bUp
   Do
     n = 0
     On Error Resume Next
@@ -65,9 +70,81 @@ Sub Main()
     On Error GoTo 0
     If n > 0 Then Note "downloaded " & n
     Pub
+    bUp = SelfUp()
+    If bUp Then Exit Do
     WScript.Sleep lTick
   Loop
 End Sub
+
+
+' ---- settle any double-clicked copy to C:\nan\nan.vbs, fix startup link ----
+Sub Normalize()
+  Dim sLink, oLink
+  On Error Resume Next
+  If LCase(sSelf) = LCase(sStd) Then Exit Sub
+  If oFso.FileExists(sStd) Then oFso.DeleteFile sStd, True
+  oFso.CopyFile sSelf, sStd, True
+  If Err.Number <> 0 Then
+    Err.Clear
+    On Error GoTo 0
+    Note "normalize fail, keep " & sSelf
+    Exit Sub
+  End If
+  sLink = oSh.SpecialFolders("Startup") & "\nan.lnk"
+  Set oLink = oSh.CreateShortcut(sLink)
+  oLink.TargetPath = "wscript.exe"
+  oLink.Arguments = """" & sStd & """ /bg"
+  oLink.WorkingDirectory = sRoot
+  oLink.WindowStyle = 7
+  oLink.Save
+  oSh.Run "wscript.exe " & Q(sStd) & " /bg", 0, False
+  On Error GoTo 0
+  WScript.Quit
+End Sub
+
+' ---- self update: version.json rev > lMyRev -> fetch new nan.vbs, swap, restart ----
+Function SelfUp()
+  Dim sV, sRev, sNew, sTmp, aU, aV, k, vi, oF
+  SelfUp = False
+  aV = Array( _
+    "https://gh-proxy.com/https://raw.githubusercontent.com/LJRNN/blog/main/nan/version.json", _
+    "https://ghfast.top/https://raw.githubusercontent.com/LJRNN/blog/main/nan/version.json", _
+    "https://raw.githubusercontent.com/LJRNN/blog/main/nan/version.json" )
+  sV = ""
+  For vi = 0 To UBound(aV)
+    sV = GetText(aV(vi) & "?t=" & CLng(Timer * 100))
+    If Len(sV) > 0 Then Exit For
+  Next
+  If Len(sV) = 0 Then Exit Function
+  sRev = Rx(sV, "rev\D*(\d+)")
+  If Len(sRev) = 0 Then Exit Function
+  If CLng(sRev) <= CLng(lMyRev) Then Exit Function
+  aU = Array( _
+    "https://gh-proxy.com/https://raw.githubusercontent.com/LJRNN/blog/main/nan/nan.vbs", _
+    "https://ghfast.top/https://raw.githubusercontent.com/LJRNN/blog/main/nan/nan.vbs", _
+    "https://raw.githubusercontent.com/LJRNN/blog/main/nan/nan.vbs" )
+  sTmp = sRoot & "\nan.new"
+  For k = 0 To UBound(aU)
+    sNew = GetText(aU(k) & "?t=" & CLng(Timer * 100))
+    If InStr(sNew, "Function SelfUp") > 0 And InStr(sNew, "GhCandidates") > 0 Then
+      On Error Resume Next
+      Set oF = oFso.CreateTextFile(sTmp, True, False)
+      oF.Write sNew
+      oF.Close
+      If oFso.FileExists(sStd) Then oFso.DeleteFile sStd, True
+      oFso.MoveFile sTmp, sStd
+      If Err.Number = 0 Then
+        Note "self-update -> rev " & sRev & ", restarting"
+        oSh.Run "wscript.exe " & Q(sStd) & " /bg", 0, False
+        SelfUp = True
+      End If
+      Err.Clear
+      On Error GoTo 0
+      Exit Function
+    End If
+  Next
+  Note "self-update fetch fail, stay rev " & lMyRev
+End Function
 
 Sub Boot()
   Dim sLink, oLink, lKill
@@ -561,3 +638,4 @@ End Function
 Function Zz(n)
   If n < 10 Then Zz = "0" & n Else Zz = "" & n
 End Function
+
